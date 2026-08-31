@@ -1,0 +1,4 @@
+[project]
+name = "tenant-semantic-search"
+version = "0.1.0"
+dependencies = ["openai", "pytest"]
