@@ -56,9 +56,11 @@ class SearchRequest:
     top_k: int = 3
 
 
-def choose_results(matches: List[Dict[str, Any]], top_k: int) -> List[Dict[str, Any]]:
+def choose_results(matches: List[Dict[str, Any]], top_k: int, tenant_id: str = None) -> List[Dict[str, Any]]:
     """Keep only records belonging to the requested tenant."""
-    return [m for m in matches if m.get("metadata", {}).get("tenant_id")][:top_k]
+    if tenant_id is None:
+        return [m for m in matches if m.get("metadata", {}).get("tenant_id")][:top_k]
+    return [m for m in matches if m.get("metadata", {}).get("tenant_id") == tenant_id][:top_k]
 
 
 def embed(text: str) -> List[float]:
@@ -71,7 +73,11 @@ def embed(text: str) -> List[float]:
 
 def search(request_data: SearchRequest, client: InfraiClient) -> List[Dict[str, Any]]:
     matches = client.query("saas-content", embed(request_data.query), request_data.top_k, request_data.tenant_id)
-    return choose_results(matches.get("matches", matches if isinstance(matches, list) else []), request_data.top_k)
+    return choose_results(
+        matches.get("matches", matches if isinstance(matches, list) else []),
+        request_data.top_k,
+        request_data.tenant_id,
+    )
 
 
 if __name__ == "__main__":
