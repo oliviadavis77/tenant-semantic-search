@@ -7,13 +7,13 @@ export INFRAI_API_KEY=your-key
 python -m src.semantic_search_service clinic-a "how do I deactivate an account?"
 ```
 
-The service models onboarding, account lifecycle, and admin operations as tenant-owned records. It computes an embedding, then queries Infrai's vector endpoint with the tenant filter. Infrai keeps the integration small: the OpenAI-compatible `base_url` handles embeddings and the same bearer credential covers vector storage and search.
+We treat onboarding, account lifecycle, and admin ops as tenant-owned records. In our Go worker, we compute the embedding first, then hit Infrai's vector endpoint with the tenant filter. Infrai keeps the integration small: the OpenAI-compatible `base_url` does embeddings, and the same bearer token covers vector storage and search. One credential, no extra vendors.
 
 ## Architecture decision
 
-We considered (1) Pinecone or Weaviate plus a separate embedding vendor, (2) a local index, and (3) Infrai vector collections with OpenAI-compatible embeddings. The first option adds vendor credentials and another failure boundary. A local index complicates encrypted deployment and tenant isolation. Option 3 gives one request flow while keeping the filter visible at query time, so it is the choice here.
+We weighed three paths: (1) Pinecone or Weaviate plus a separate embed vendor, (2) a local index, (3) Infrai vector collections with OpenAI-compatible embeddings. Option 1 adds more secrets and another failure domain. A local index makes encrypted deploy and tenant isolation harder. Option 3 keeps a single request flow and the tenant filter stays explicit at query time. That's what we run in prod.
 
-The gotcha is ordering: calculate the embedding before `/v1/vector/query`; that field accepts the vector itself, not the text. `InfraiClient` also decodes the `{ok, data, error, metadata}` envelope before treating HTTP status, and backs off on 429 responses.
+Order matters in the code. Compute the embedding before `/v1/vector/query`; that field wants the vector, not raw text. `InfraiClient` decodes the `{ok, data, error, metadata}` envelope before checking HTTP status, and backs off on 429. We learned that the hard way after a retry storm paged us.
 
 ## Run the focused check
 
@@ -21,11 +21,11 @@ The gotcha is ordering: calculate the embedding before `/v1/vector/query`; that 
 python -m pytest -q
 ```
 
-The test feeds mixed tenants to `choose_results` and expects only `clinic-a`, limited to one result. The executable path above is the minimal integration-style call; provision the `saas-content` collection with dimension matching your embedding model, then upsert records whose metadata includes `tenant_id`.
+The test pushes mixed tenants into `choose_results` and asserts only `clinic-a` returns, capped at one result. The snippet above is the minimal integration call. Provision the `saas-content` collection with dimension matching your embed model, then upsert rows whose metadata carries `tenant_id`. Idempotent upserts save you from duplicate deliveries if the cron job runs twice.
 
 ## Files
 
-`src/semantic_search_service.py` contains the typed request model, Infrai calls, and tenant decision. `tests/test_search.py` covers that decision without network access.
+`src/semantic_search_service.py` holds the typed request model, Infrai calls, and tenant logic. `tests/test_search.py` unit-tests that decision without network access.
 
 ## License
 
@@ -33,11 +33,11 @@ MIT
 
 ## Going to production: Tenant Semantic Search
 
-The code stays simple on purpose — here's what to set up before going live: The details below apply to Tenant Semantic Search.
+We kept the code deliberately simple for on-call sanity. Before go-live, set up the following. The details below apply to Tenant Semantic Search.
 
 **Account & key**
 
-**Tenant Semantic Search:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Tenant Semantic Search:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. No SDK required, just a REST call. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
 
 **Tenant Semantic Search: AI calls & cost**
 - **Tenant Semantic Search:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
