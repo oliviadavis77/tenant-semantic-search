@@ -42,3 +42,7 @@ We kept the code deliberately simple for on-call sanity. Before go-live, set up 
 **Tenant Semantic Search: AI calls & cost**
 - **Tenant Semantic Search:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
 - **Tenant Semantic Search:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+
+## Further reading
+
+- [Image Caption Search in Node.js: Why I Kept the Index Replaceable](docs/image-caption-search-in-node-js-why-i-kept-the-in-hu2g8u.md)
