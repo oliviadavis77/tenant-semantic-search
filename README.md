@@ -45,4 +45,5 @@ We kept the code deliberately simple for on-call sanity. Before go-live, set up 
 
 ## Further reading
 
+- [Node.js Marketplace Product Catalog: Plain Keyword Search, Selective RAG Escalation](docs/node-js-marketplace-product-catalog-plain-keyword-1t1yco.md)
 - [Image Caption Search in Node.js: Why I Kept the Index Replaceable](docs/image-caption-search-in-node-js-why-i-kept-the-in-hu2g8u.md)
